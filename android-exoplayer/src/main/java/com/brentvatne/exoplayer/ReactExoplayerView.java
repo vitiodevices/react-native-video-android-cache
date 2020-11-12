@@ -39,6 +39,7 @@ import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.mediacodec.MediaCodecRenderer;
 import com.google.android.exoplayer2.mediacodec.MediaCodecUtil;
 import com.google.android.exoplayer2.metadata.Metadata;
+import com.google.android.exoplayer2.metadata.MetadataOutput;
 import com.google.android.exoplayer2.metadata.MetadataRenderer;
 import com.google.android.exoplayer2.source.BehindLiveWindowException;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
@@ -84,7 +85,8 @@ class ReactExoplayerView extends FrameLayout implements
         BandwidthMeter.EventListener,
         BecomingNoisyListener,
         AudioManager.OnAudioFocusChangeListener,
-        MetadataRenderer.Output {
+        MetadataOutput
+        /*MetadataRenderer.AdaptiveSupport */{
 
     private static final String TAG = "ReactExoplayerView";
 
@@ -360,7 +362,8 @@ class ReactExoplayerView extends FrameLayout implements
                     DefaultLoadControl defaultLoadControl = new DefaultLoadControl(allocator, minBufferMs, maxBufferMs, bufferForPlaybackMs, bufferForPlaybackAfterRebufferMs, -1, true);
                     player = ExoPlayerFactory.newSimpleInstance(getContext(), trackSelector, defaultLoadControl);
                     player.addListener(self);
-                    player.setMetadataOutput(self);
+//                    player.setMetadataOutput(self);
+                    player.addMetadataOutput(self);
                     exoPlayerView.setPlayer(player);
                     audioBecomingNoisyReceiver.setListener(self);
                     BANDWIDTH_METER.addEventListener(new Handler(), self);
@@ -421,8 +424,12 @@ class ReactExoplayerView extends FrameLayout implements
                         mainHandler, null);
             case C.TYPE_HLS:
                 Log.d("TYPE_OTHER","TYPE_HLS");
-                return new HlsMediaSource(uri, mediaDataSourceFactory, 
-                        minLoadRetryCount, mainHandler, null);
+                /*return new HlsMediaSource(uri, mediaDataSourceFactory,
+                        minLoadRetryCount, mainHandler, null);*/
+               /* return new HlsMediaSource(uri, mediaDataSourceFactory,
+                        minLoadRetryCount, mainHandler, null);*/
+                return new HlsMediaSource.Factory(mediaDataSourceFactory).createMediaSource(uri);
+
             case C.TYPE_OTHER:
                 Log.d("TYPE_OTHER",uri.toString());
                 Log.d("TYPE_OTHER2",mediaDataSourceFactory.toString());
@@ -821,7 +828,7 @@ class ReactExoplayerView extends FrameLayout implements
                 // Special case for decoder initialization failures.
                 MediaCodecRenderer.DecoderInitializationException decoderInitializationException =
                         (MediaCodecRenderer.DecoderInitializationException) cause;
-                if (decoderInitializationException.decoderName == null) {
+                if (decoderInitializationException.codecInfo.name == null) {//decoderName
                     if (decoderInitializationException.getCause() instanceof MediaCodecUtil.DecoderQueryException) {
                         errorString = getResources().getString(R.string.error_querying_decoders);
                     } else if (decoderInitializationException.secureDecoderRequired) {
@@ -833,7 +840,7 @@ class ReactExoplayerView extends FrameLayout implements
                     }
                 } else {
                     errorString = getResources().getString(R.string.error_instantiating_decoder,
-                            decoderInitializationException.decoderName);
+                            /*decoderInitializationException.decoderName*/decoderInitializationException.codecInfo.name);
                 }
             }
         }
